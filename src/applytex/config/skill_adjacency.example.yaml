@@ -1,0 +1,100 @@
+# Skill clusters: JD terms may mirror resume terms IN FLEX ZONES ONLY.
+# Copy to ~/.applytex/skill_adjacency.yaml (done automatically on init).
+# The more clusters you define, the more JD terms can be classified as
+# "adjacent" and potentially added to your resume during LaTeX tailoring.
+# Run `applytex init` to get the latest version.
+# clusters_version: 2
+
+clusters:
+  # ── Languages & runtimes ──
+  jvm_languages: [java, kotlin, "c#", csharp, scala, groovy, jvm]
+  python_ecosystem: [python, django, flask, fastapi, celery, pytest, pandas, numpy]
+  javascript_typescript: [javascript, typescript, js, ts, "node.js", nodejs, node, deno, bun]
+  go_lang: [go, golang]
+  rust_lang: [rust, rustc, cargo]
+  dotnet: [".net", dotnet, ".net core", asp.net, "c#", csharp, vb.net]
+  scripting: [bash, shell, powershell, python, perl, ruby, awk, sed]
+  low_level: ["c++", cpp, "c", rust, zig, assembly]
+
+  # ── Frontend ──
+  frontend_frameworks: [react, "next.js", nextjs, vue, nuxt, angular, svelte, solidjs]
+  styling: [css, tailwind, bootstrap, scss, sass, less, postcss]
+  markup: [html, htmx, jsx, tsx, markdown]
+  state_management: [redux, zustand, recoil, mobx, pinia, vuex]
+  testing_frontend: [jest, vitest, cypress, "playwright", testing-library, storybook]
+
+  # ── Backend & API ──
+  api_protocols: [rest, graphql, grpc, websocket, sse, webhook, apollo]
+  api_gateways: [nginx, envoy, traefik, kong, "api gateway"]
+  backend_frameworks: [express, fastify, nestjs, spring, django, flask, fastapi, gin, echo]
+  orm: [sqlalchemy, prisma, sequelize, typeorm, drizzle, django orm, entity framework]
+
+  # ── Databases & storage ──
+  relational_db: [postgresql, postgres, mysql, sqlite, mariadb, "sql", cockroachdb]
+  nosql: [mongodb, dynamodb, cassandra, couchbase, firestore, redis]
+  caching: [redis, memcached, "cdN", cloudfront, varnish]
+  search: [elasticsearch, opensearch, algolia, meilisearch, solr]
+  data_warehouse: ["bigquery", snowflake, redshift, clickhouse, databricks]
+  message_queue: [kafka, rabbitmq, sqs, sns, nats, pulsar, redis streams]
+  object_storage: ["s3", "gcs", "blob storage", minio]
+
+  # ── Cloud & infrastructure ──
+  cloud_providers: [aws, azure, gcp, "google cloud", "azure cloud", oracle cloud, oci]
+  aws_services: [ec2, lambda, s3, "ecs", "eks", rds, dynamodb, sqs, sns, cloudfront, route53, "iam", cloudformation, "cdk", elasticache, "api gateway"]
+  cloud_generic: [vpc, "load balancer", autoscaling, "auto scaling", "serverless", "cloud", multi-cloud, hybrid cloud]
+  container_orchestration: [docker, kubernetes, k8s, "eks", "aks", "gke", ecs, fargate, podman, containerd, helm, istio]
+  iac: [terraform, pulumi, cloudformation, "cdk", ansible, puppet, chef]
+  ci_cd: ["ci/cd", cicd, jenkins, "github actions", "gitlab ci", circleci, argo, flux, buildkite, teamcity]
+  observability: [datadog, grafana, prometheus, new relic, splunk, elk, elastic stack, opentelemetry, jaeger, zipkin, sentry]
+  logging: ["elk", "elastic stack", fluentd, logstash, vector, loki, cloudwatch]
+
+  # ── DevOps & SRE ──
+  monitoring: [prometheus, grafana, datadog, new relic, sentry, pagerduty, opsgenie]
+  incident_management: [pagerduty, opsgenie, oncall, incident, runbook, postmortem]
+  sre_practices: ["slo", "sli", "error budget", "reliability", "availability", "latency", "observability"]
+  service_mesh: [istio, linkerd, consul, envoy]
+
+  # ── Security ──
+  auth_protocols: [oauth, "oauth2", oidc, saml, jwt, "sso", "mfa", "2fa", ldap, "saml 2.0"]
+  security_tools: [vault, "hashicorp vault", "aws iam", "azure ad", "secret manager", "keycloak", auth0]
+  application_security: ["owasp", "cve", "vulnerability", "penetration test", "security audit", "sbom"]
+
+  # ── Build & package management ──
+  build_tools: [webpack, vite, esbuild, turbopack, "gradle", maven, bazel, nx, "npm", yarn, pnpm, pip, poetry, cargo]
+  package_registry: ["npm", "pypi", dockerhub, "artifact", "ecr", github packages, "private npm"]
+
+  # ── Testing ──
+  testing_python: [pytest, unittest, tox, coverage, hypothesis, behave]
+  testing_general: [jest, "unit test", "integration test", "e2e", "end-to-end", "tDD", "bDD", smoke test, "regression test"]
+  testing_contract: [pact, contract test, consumer driven, schema validation]
+  performance_testing: [k6, jmeter, gatling, locust, "load test", "stress test", benchmark]
+
+  # ── Data & ML ──
+  data_engineering: [spark, airflow, "etl", "elt", dbt, "data pipeline", "data warehouse", "data lake"]
+  stream_processing: [kafka streams, flink, spark streaming, ksqldb, samza]
+  ml_frameworks: [tensorflow, pytorch, scikit-learn, keras, huggingface, "ml flow", "langchain"]
+  ml_platform: ["mlops", model serving, feature store, "vector db", "embedding", llm, "gpt", "openai", "anthropic", "claude"]
+  container_ml: ["nvidia", "cuda", "gpu", "triton", "jupiter notebook", "jupyter"]
+
+  # ── Version control & collaboration ──
+  version_control: [git, github, gitlab, bitbucket, "source control", "version control", "vcs"]
+  project_management: [jira, confluence, linear, notion, "agile", scrum, kanban, "sprint", standup]
+  code_review: ["code review", "pull request", "merge request", pr, mr]
+  docs: [swagger, openapi, postman, "api docs", readme, documentation]
+
+  # ── Methodologies ──
+  development_methods: [agile, scrum, kanban, safe, lean, xp, waterfall]
+  software_lifecycle: ["sdlc", "software development", "engineering", lifecycle]
+
+placement:
+  sacred_roles: 1
+  sacred_years: 3
+  flex_zones: [older_projects, older_roles, summary_light]
+  allow_adjacent_swap_in_flex_only: true
+
+keyword_policy:
+  auto_release: false
+  flag_all_adjustments: true
+  adjacent_mode: append          # append | swap — flex zone only
+  max_adjacent_adjustments_per_job: 5
+  max_adjacent_swaps_per_job: 5  # legacy alias for max_adjacent_adjustments_per_job

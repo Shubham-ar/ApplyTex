@@ -1,6 +1,110 @@
 # Changelog
 
-All notable changes to ApplyPilot will be documented in this file.
+All notable changes to ApplyTex will be documented in this file.
+
+## [0.4.5] - 2026-07-02
+
+### Fixed
+
+- Streaming pipeline marks skipped stages on canonical order (not legacy tailor-only graph)
+- Per-run upstream graph: `cover` waits on `latex` when LaTeX is in the run
+- `pipeline.default_stages` from `config.yaml` respected for `applytex run all`
+- JobSpy, Workday, and smart-extract honor `jobspy_max_tier` / `workday_max_tier` query tiers
+- `--min-score` defaults to `pipeline.min_score` from `config.yaml` (default 8)
+
+### Changed
+
+- Init wizard default search radius: 50 miles (was 0)
+- Init wizard emits queries with `tier: 1` only
+
+## [0.4.4] - 2026-07-02
+
+### Fixed
+
+- Glassdoor JobSpy scrape passes `country_indeed` (was missing)
+- `exclude_titles` enforced in Workday and smart-extract discovery
+- Smart extract expands `{location_encoded}` for **all** `locations[]` (local first)
+- LaTeX init: `.zip` import, validate custom `\documentclass` requires matching `.cls`
+- `applytex doctor` fails when custom document class is missing its `.cls`
+
+## [0.4.3] - 2026-07-01
+
+### Fixed
+
+- **`searches.yaml` schema aligned with JobSpy** — `sites` (legacy `boards` alias), `defaults.country_indeed` (legacy top-level `country` alias)
+- **Init wizard** emits complete search config: sites, country, location filters, `exclude_titles`
+- **`exclude_titles`** enforced during JobSpy discovery
+- **Legacy `applypilot.db`** auto-used when `applytex.db` missing; `applytex doctor` shows rename hint
+- Invalid bare-string `locations` entries skipped with warning
+
+## [0.4.2] - 2026-06-29
+
+### Fixed
+
+- Approve/reject resolve URLs with query params via `normalize_job_url` / `resolve_job_url`
+- `applytex apply` precheck only counts **approved** jobs (matches `acquire_job` gate)
+- Discovery location filters read `location.accept_patterns` / `reject_patterns` from `searches.yaml`
+
+## [0.4.1] - 2026-06-29
+
+### Added
+
+- E2E tests: add → pending → approve → `acquire_job` (`tests/test_e2e_flow.py`)
+- Validator unit tests for gap terms and sacred-zone adjacent swaps
+
+### Changed
+
+- `applytex add` — clearer status hints, non-zero exit on failures, Playwright error handling
+- `applytex doctor` — Playwright check for `add` / enrich
+- `acquire_job(--url)` — include jobs with `NULL` apply_status (fixes `apply --url` after approve)
+
+## [0.4.0] - 2026-06-29
+
+### Added
+
+- **`applytex add URL`** — manual job URL: enrich → score → LaTeX Keyword Match (when above threshold)
+- **`applytex registry`** — tailored resume variants with match scores, flags, review status (`--pending`, `--approved`, `--json`)
+- **Resume Registry** section in `applytex view` dashboard — match bars, adjustments, PDF/tex links, approve hints
+- `registry.py` and `jobs/add.py` modules
+- Tests for registry and add flows
+
+## [0.3.0] - 2026-07-01
+
+### Added
+
+- **Keyword Match** LaTeX pipeline (`applytex run latex` or default `run all` with LaTeX enabled)
+- Modules: `keywords`, `placement`, `tailor_plan`, `patch`, `validator`, `compiler`, `tailor`, `review`
+- Per-job outputs: `{prefix}.tex`, `.pdf`, `.txt`, `_KEYWORD_PLAN.json`, `_KEYWORD_REPORT.json`
+- `applytex review --pending | --approve | --reject`
+- DB columns: `tailored_latex_path`, `keyword_report_path`, `review_status`, match scores
+- `skill_adjacency.example.yaml` copied on init
+- Auto-apply gated on `review_status = approved` (unless `keyword_policy.auto_release: true`)
+
+## [0.2.0] - 2026-07-01
+
+### Added
+
+- LaTeX-first `applytex init`: copy `master.tex` + assets to `~/.applytex/latex/`
+- `latex/text_export.py` — derive `resume.txt` from LaTeX for scoring
+- `latex/import_source.py` — import single `.tex` or Overleaf folder
+- `~/.applytex/config.yaml` on init (`latex.enabled`, `pipeline`, `cover`)
+- `applytex doctor` checks: `master.tex`, `resume.cls`, tectonic/pdflatex
+- Legacy resume mode (`latex.enabled: false`) preserves plain-text ApplyPilot flow
+
+## [0.1.0] - 2026-07-01
+
+### Added
+
+- Fork of ApplyPilot v0.3.0 rebranded as **ApplyTex** (`applytex` CLI, `~/.applytex/` data dir)
+- `NOTICE` with upstream AGPL attribution
+- `IMPLEMENTATION_PLAN.md` for LaTeX + Keyword Match roadmap
+- `applytex doctor` migration hint when `~/.applypilot` exists without `~/.applytex`
+
+---
+
+## Upstream ApplyPilot history
+
+All notable changes to ApplyPilot will be documented below.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

@@ -1,0 +1,16 @@
+# ApplyTex user configuration
+# Copied to ~/.applytex/config.yaml on init.
+
+latex:
+  enabled: true
+  engine: tectonic  # tectonic | pdflatex
+
+pipeline:
+  default_stages: [discover, enrich, score, latex]
+  min_score: 8
+
+cover:
+  enabled: false
+
+keyword_policy:
+  auto_release: false

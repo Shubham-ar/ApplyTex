@@ -1,195 +1,424 @@
-<!-- logo here -->
+# ApplyTex
 
-> **⚠️ ApplyPilot** is the original open-source project, created by [Pickle-Pixel](https://github.com/Pickle-Pixel) and first published on GitHub on **February 17, 2026**. We are **not affiliated** with applypilot.app, useapplypilot.com, or any other product using the "ApplyPilot" name. These sites are **not associated with this project** and may misrepresent what they offer. If you're looking for the autonomous, open-source job application agent — you're in the right place.
+**LaTeX-native job application pipeline** — fork of [ApplyPilot](https://github.com/Pickle-Pixel/ApplyPilot) v0.3.0 by Pickle-Pixel (AGPL-3.0).
 
-# ApplyPilot
+ApplyTex keeps ApplyPilot's job discovery, LLM scoring, and optional browser auto-apply. The LaTeX path adds:
 
-**Applied to 1,000 jobs in 2 days. Fully autonomous. Open source.**
+- **`master.tex` as your canonical resume** — copied from Overleaf or a local folder at `init`
+- **Keyword Match** — zone-aware JD keyword alignment on your `.tex`, with flagged adjustments
+- **Approve-before-apply** — review tailored PDFs before they enter the apply queue
+- **Per-job PDF compile** from your template (`.cls` / `.sty`)
+- **Registry** — tailored variant ↔ job URL in the CLI and HTML dashboard
 
-[![PyPI version](https://img.shields.io/pypi/v/applypilot?color=blue)](https://pypi.org/project/applypilot/)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/Pickle-Pixel/ApplyPilot?style=social)](https://github.com/Pickle-Pixel/ApplyPilot)
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S6S01UL5IO)
+User data lives in **`~/.applytex/`** (override with `APPLYTEX_DIR`).
 
-
-
-
-https://github.com/user-attachments/assets/7ee3417f-43d4-4245-9952-35df1e77f2df
-
+> Developer reference: [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md)
 
 ---
 
-## What It Does
+## What you need (tiers)
 
-ApplyPilot is a 6-stage autonomous job application pipeline. It discovers jobs across 5+ boards, scores them against your resume with AI, tailors your resume per job, writes cover letters, and **submits applications for you**. It navigates forms, uploads documents, answers screening questions, all hands-free.
+| Tier | Unlocks | Requirements |
+|------|---------|--------------|
+| **1 — Discovery** | `init`, `run discover`, `run enrich`, `status`, `dashboard` | Python 3.11+, JobSpy, Playwright |
+| **2 — AI scoring & LaTeX** | `run score`, `run latex`, `review`, `add`, `registry` | LLM API key in `~/.applytex/.env` |
+| **3 — Auto-apply** | `apply` | Tier 2 + [Claude Code CLI](https://claude.ai/code) + Chrome + Node.js |
 
-Three commands. That's it.
+Run `applytex doctor` anytime to see what is missing.
+
+---
+
+## Installation
+
+### 1. Clone and install ApplyTex
 
 ```bash
-pip install applypilot
-pip install --no-deps python-jobspy && pip install pydantic tls-client requests markdownify regex
-applypilot init          # one-time setup: resume, profile, preferences, API keys
-applypilot doctor        # verify your setup — shows what's installed and what's missing
-applypilot run           # discover > enrich > score > tailor > cover letters
-applypilot run -w 4      # same but parallel (4 threads for discovery/enrichment)
-applypilot apply         # autonomous browser-driven submission
-applypilot apply -w 3    # parallel apply (3 Chrome instances)
-applypilot apply --dry-run  # fill forms without submitting
+git clone <your-applytex-repo-url> ApplyTex
+cd ApplyTex
+
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+
+pip install -e .
+applytex --version                   # should print 0.4.5+
 ```
 
-> **Why two install commands?** `python-jobspy` pins an exact numpy version in its metadata that conflicts with pip's resolver, but works fine at runtime with any modern numpy. The `--no-deps` flag bypasses the resolver; the second command installs jobspy's actual runtime dependencies. Everything except `python-jobspy` installs normally.
+### 2. Install JobSpy (job board scraping)
 
----
-
-## Two Paths
-
-### Full Pipeline (recommended)
-**Requires:** Python 3.11+, Node.js (for npx), Gemini API key (free), Claude Code CLI, Chrome
-
-Runs all 6 stages, from job discovery to autonomous application submission. This is the full power of ApplyPilot.
-
-### Discovery + Tailoring Only
-**Requires:** Python 3.11+, Gemini API key (free)
-
-Runs stages 1-5: discovers jobs, scores them, tailors your resume, generates cover letters. You submit applications manually with the AI-prepared materials.
-
----
-
-## The Pipeline
-
-| Stage | What Happens |
-|-------|-------------|
-| **1. Discover** | Scrapes 5 job boards (Indeed, LinkedIn, Glassdoor, ZipRecruiter, Google Jobs) + 48 Workday employer portals + 30 direct career sites |
-| **2. Enrich** | Fetches full job descriptions via JSON-LD, CSS selectors, or AI-powered extraction |
-| **3. Score** | AI rates every job 1-10 based on your resume and preferences. Only high-fit jobs proceed |
-| **4. Tailor** | AI rewrites your resume per job: reorganizes, emphasizes relevant experience, adds keywords. Never fabricates |
-| **5. Cover Letter** | AI generates a targeted cover letter per job |
-| **6. Auto-Apply** | Claude Code navigates application forms, fills fields, uploads documents, answers questions, and submits |
-
-Each stage is independent. Run them all or pick what you need.
-
----
-
-## ApplyPilot vs The Alternatives
-
-| Feature | ApplyPilot | AIHawk | Manual |
-|---------|-----------|--------|--------|
-| Job discovery | 5 boards + Workday + direct sites | LinkedIn only | One board at a time |
-| AI scoring | 1-10 fit score per job | Basic filtering | Your gut feeling |
-| Resume tailoring | Per-job AI rewrite | Template-based | Hours per application |
-| Auto-apply | Full form navigation + submission | LinkedIn Easy Apply only | Click, type, repeat |
-| Supported sites | Indeed, LinkedIn, Glassdoor, ZipRecruiter, Google Jobs, 46 Workday portals, 28 direct sites | LinkedIn | Whatever you open |
-| License | AGPL-3.0 | MIT | N/A |
-
----
-
-## Requirements
-
-| Component | Required For | Details |
-|-----------|-------------|---------|
-| Python 3.11+ | Everything | Core runtime |
-| Node.js 18+ | Auto-apply | Needed for `npx` to run Playwright MCP server |
-| Gemini API key | Scoring, tailoring, cover letters | Free tier (15 RPM / 1M tokens/day) is enough |
-| Chrome/Chromium | Auto-apply | Auto-detected on most systems |
-| Claude Code CLI | Auto-apply | Install from [claude.ai/code](https://claude.ai/code) |
-
-**Gemini API key is free.** Get one at [aistudio.google.com](https://aistudio.google.com). OpenAI and local models (Ollama/llama.cpp) are also supported.
-
-### Optional
-
-| Component | What It Does |
-|-----------|-------------|
-| CapSolver API key | Solves CAPTCHAs during auto-apply (hCaptcha, reCAPTCHA, Turnstile, FunCaptcha). Without it, CAPTCHA-blocked applications just fail gracefully |
-
-> **Note:** python-jobspy is installed separately with `--no-deps` because it pins an exact numpy version in its metadata that conflicts with pip's resolver. It works fine with modern numpy at runtime.
-
----
-
-## Configuration
-
-All generated by `applypilot init`:
-
-### `profile.json`
-Your personal data in one structured file: contact info, work authorization, compensation, experience, skills, resume facts (preserved during tailoring), and EEO defaults. Powers scoring, tailoring, and form auto-fill.
-
-### `searches.yaml`
-Job search queries, target titles, locations, boards. Run multiple searches with different parameters.
-
-### `.env`
-API keys and runtime config: `GEMINI_API_KEY`, `LLM_MODEL`, `CAPSOLVER_API_KEY` (optional).
-
-### Package configs (shipped with ApplyPilot)
-- `config/employers.yaml` - Workday employer registry (48 preconfigured)
-- `config/sites.yaml` - Direct career sites (30+), blocked sites, base URLs, manual ATS domains
-- `config/searches.example.yaml` - Example search configuration
-
----
-
-## How Stages Work
-
-### Discover
-Queries Indeed, LinkedIn, Glassdoor, ZipRecruiter, Google Jobs via JobSpy. Scrapes 48 Workday employer portals (configurable in `employers.yaml`). Hits 30 direct career sites with custom extractors. Deduplicates by URL.
-
-### Enrich
-Visits each job URL and extracts the full description. 3-tier cascade: JSON-LD structured data, then CSS selector patterns, then AI-powered extraction for unknown layouts.
-
-### Score
-AI scores every job 1-10 against your profile. 9-10 = strong match, 7-8 = good, 5-6 = moderate, 1-4 = skip. Only jobs above your threshold proceed to tailoring.
-
-### Tailor
-Generates a custom resume per job: reorders experience, emphasizes relevant skills, incorporates keywords from the job description. Your `resume_facts` (companies, projects, metrics) are preserved exactly. The AI reorganizes but never fabricates.
-
-### Cover Letter
-Writes a targeted cover letter per job referencing the specific company, role, and how your experience maps to their requirements.
-
-### Auto-Apply
-Claude Code launches a Chrome instance, navigates to each application page, detects the form type, fills personal information and work history, uploads the tailored resume and cover letter, answers screening questions with AI, and submits. A live dashboard shows progress in real-time.
-
-The Playwright MCP server is configured automatically at runtime per worker. No manual MCP setup needed.
+JobSpy is installed separately because of dependency pin conflicts:
 
 ```bash
-# Utility modes (no Chrome/Claude needed)
-applypilot apply --mark-applied URL    # manually mark a job as applied
-applypilot apply --mark-failed URL     # manually mark a job as failed
-applypilot apply --reset-failed        # reset all failed jobs for retry
-applypilot apply --gen --url URL       # generate prompt file for manual debugging
+pip install --no-deps python-jobspy
+pip install pydantic tls-client requests markdownify regex
+```
+
+### 3. Install Playwright (enrichment + single-job add)
+
+```bash
+playwright install chromium
+```
+
+### 4. Install a LaTeX engine (Keyword Match PDF compile)
+
+Pick one:
+
+```bash
+# Recommended — lightweight, no full TeX Live install
+brew install tectonic              # macOS
+# or: cargo install tectonic
+
+# Alternative
+# Install TeX Live, then ensure pdflatex is on PATH
+```
+
+Set the engine in `~/.applytex/config.yaml` (`latex.engine: tectonic` or `pdflatex`).
+
+### 5. Verify
+
+```bash
+applytex doctor
+```
+
+Fix anything marked **MISSING** before continuing.
+
+---
+
+## First-time setup (`applytex init`)
+
+The wizard creates everything under `~/.applytex/`:
+
+```
+~/.applytex/
+  latex/master.tex          ← your resume source (copied in)
+  latex/resume.cls          ← class/style files (if present)
+  resume.txt                ← plain text derived for scoring
+  profile.json              ← personal info for scoring + auto-fill
+  searches.yaml             ← job boards, locations, queries
+  config.yaml               ← pipeline + LaTeX settings
+  skill_adjacency.yaml      ← keyword cluster rules
+  .env                      ← LLM API keys
+  applytex.db               ← job database
+  tailored_resumes/         ← per-job .tex, .pdf, .txt outputs
+```
+
+### Run the wizard
+
+```bash
+applytex init
+```
+
+You will be prompted for:
+
+1. **LaTeX resume** — path to a single `.tex` file, an Overleaf export folder, or a `.zip`. ApplyTex **copies** files into `~/.applytex/latex/`; your original path is not used at runtime.
+2. **Profile** — name, email, work authorization, compensation, skills boundary, preserved resume facts.
+3. **Search config** — target location, search radius, job titles/queries, Indeed country.
+4. **LLM provider** — Gemini (free tier friendly), OpenAI, Anthropic-compatible (e.g. DeepSeek), or local Ollama.
+
+After init, run `applytex doctor` again to confirm LaTeX assets and API keys.
+
+### Migrating from ApplyPilot
+
+```bash
+mv ~/.applypilot ~/.applytex
+# or keep the old dir:
+export APPLYTEX_DIR=~/.applypilot
+```
+
+If you have `applypilot.db` but not `applytex.db`, ApplyTex uses the legacy DB automatically; `doctor` shows a rename hint.
+
+---
+
+## Configuration files
+
+### `~/.applytex/config.yaml`
+
+```yaml
+latex:
+  enabled: true
+  engine: tectonic
+
+pipeline:
+  default_stages: [discover, enrich, score, latex]
+  min_score: 8                    # used when --min-score is omitted
+
+cover:
+  enabled: false
+
+keyword_policy:
+  auto_release: false             # true = skip review gate (power users)
+```
+
+### `~/.applytex/searches.yaml`
+
+Controls **where** and **what** to search. Key sections:
+
+- `sites` — JobSpy boards (`indeed`, `linkedin`, `glassdoor`, …). Legacy `boards:` alias still works.
+- `defaults.country_indeed` — Indeed/Glassdoor country (`usa`, `canada`, …).
+- `locations[]` — search locations; each entry has `location` and `remote`.
+- `location.accept_patterns` / `reject_patterns` — post-filter discovered jobs.
+- `queries[]` — search strings with optional `tier` (1 = highest priority).
+- `jobspy_max_tier` — max query tier for all discovery scrapers (default `2`).
+- `exclude_titles` — skip jobs whose title contains these strings.
+
+See [`src/applytex/config/searches.example.yaml`](./src/applytex/config/searches.example.yaml) for a full example.
+
+### `~/.applytex/.env`
+
+LLM keys (pick one provider):
+
+```bash
+# Gemini
+GEMINI_API_KEY=your_key
+LLM_MODEL=gemini-2.0-flash
+
+# OpenAI
+# OPENAI_API_KEY=your_key
+
+# Anthropic-compatible (e.g. DeepSeek)
+# ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
+# ANTHROPIC_AUTH_TOKEN=your_key
+# ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-flash
+
+# Local
+# LLM_URL=http://localhost:11434/v1
+# LLM_MODEL=llama3
+```
+
+Optional for auto-apply: `CAPSOLVER_API_KEY`, `CHROME_PATH`, `APPLYTEX_DIR`.
+
+---
+
+## Step-by-step: full pipeline workflow
+
+This is the default **semi-auto** flow: discover → score → tailor → **you approve** → apply.
+
+### Step 1 — Discover jobs
+
+Scrapes Indeed/LinkedIn (JobSpy), Workday employer portals, and configured career sites:
+
+```bash
+applytex run discover
+# or run discovery + enrichment together:
+applytex run discover enrich
+
+# parallel discovery/enrichment:
+applytex run discover enrich --workers 4
+```
+
+Check progress:
+
+```bash
+applytex status
+```
+
+Edit `~/.applytex/searches.yaml` to tune boards, locations, queries, and title filters, then re-run discover.
+
+### Step 2 — Enrich job descriptions (if not done in Step 1)
+
+Fetches full descriptions and application URLs:
+
+```bash
+applytex run enrich
+applytex run enrich --workers 4
+```
+
+### Step 3 — Score jobs against your resume
+
+Compares each job description to `~/.applytex/resume.txt` (derived from your LaTeX at init):
+
+```bash
+applytex run score
+```
+
+Scores are 1–10. Only jobs at or above `pipeline.min_score` (default **8**) proceed to tailoring. Override per run:
+
+```bash
+applytex run score
+applytex run latex --min-score 7    # when running latex alone
+```
+
+### Step 4 — LaTeX Keyword Match (tailor + compile)
+
+For each high-scoring job, ApplyTex:
+
+1. Extracts JD keywords
+2. Builds a keyword plan (exact / adjacent / gap)
+3. Patches `master.tex` (sacred zone = current role; flex zone = older roles)
+4. Compiles `{prefix}.pdf` and writes `{prefix}.txt` for the apply agent
+5. Sets `review_status = pending` (unless `keyword_policy.auto_release: true`)
+
+```bash
+applytex run latex
+# or run the default pipeline in one command:
+applytex run all
+# equivalent to config.yaml default_stages: discover enrich score latex
+```
+
+Outputs per job in `~/.applytex/tailored_resumes/`:
+
+```
+{prefix}.tex
+{prefix}.pdf
+{prefix}.txt                    ← used by auto-apply for form fields
+{prefix}_KEYWORD_PLAN.json
+{prefix}_KEYWORD_REPORT.json    ← human-readable adjustment flags
+```
+
+### Step 5 — Review flagged adjustments
+
+List jobs awaiting your approval:
+
+```bash
+applytex review --pending
+applytex registry --pending
+applytex dashboard              # opens HTML dashboard with registry section
+```
+
+Inspect the PDF and `_KEYWORD_REPORT.json` adjustments (e.g. adjacent swaps on older projects). Then:
+
+```bash
+applytex review --approve --url "https://boards.greenhouse.io/company/jobs/123"
+# or reject:
+applytex review --reject --url "https://..."
+```
+
+Only **approved** jobs get `tailored_resume_path` set and appear in the apply queue.
+
+### Step 6 — Auto-apply (optional, Tier 3)
+
+Requires Claude Code CLI, Chrome, and Node.js (`npx`).
+
+Dry-run first (fills forms, does not click Submit):
+
+```bash
+applytex apply --dry-run --url "https://boards.greenhouse.io/company/jobs/123"
+```
+
+Apply to one approved job:
+
+```bash
+applytex apply --url "https://..."
+```
+
+Apply to the highest-scoring approved jobs in queue:
+
+```bash
+applytex apply --limit 5
+applytex apply --continuous      # poll forever for new approved jobs
+```
+
+Utility flags:
+
+```bash
+applytex apply --mark-applied "URL"
+applytex apply --mark-failed "URL" --fail-reason "captcha"
+applytex apply --reset-failed
+applytex apply --gen --url "URL"   # dump prompt for manual debugging
 ```
 
 ---
 
-## CLI Reference
+## Step-by-step: single job URL
 
+When you find one posting outside the discovery crawl:
+
+```bash
+applytex add "https://boards.greenhouse.io/company/jobs/456"
 ```
-applypilot init                         # First-time setup wizard
-applypilot doctor                       # Verify setup, diagnose missing requirements
-applypilot run [stages...]              # Run pipeline stages (or 'all')
-applypilot run --workers 4              # Parallel discovery/enrichment
-applypilot run --stream                 # Concurrent stages (streaming mode)
-applypilot run --min-score 8            # Override score threshold
-applypilot run --dry-run                # Preview without executing
-applypilot run --validation lenient     # Relax validation (recommended for Gemini free tier)
-applypilot run --validation strict      # Strictest validation (retries on any banned word)
-applypilot apply                        # Launch auto-apply
-applypilot apply --workers 3            # Parallel browser workers
-applypilot apply --dry-run              # Fill forms without submitting
-applypilot apply --continuous           # Run forever, polling for new jobs
-applypilot apply --headless             # Headless browser mode
-applypilot apply --url URL              # Apply to a specific job
-applypilot status                       # Pipeline statistics
-applypilot dashboard                    # Open HTML results dashboard
+
+This runs: **insert → enrich → score → LaTeX Keyword Match** (if score ≥ threshold).
+
+Then review and apply as above:
+
+```bash
+applytex review --pending
+applytex review --approve --url "https://..."
+applytex apply --dry-run --url "https://..."
 ```
 
 ---
 
-## Contributing
+## Step-by-step: run everything at once
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, and PR guidelines.
+```bash
+# Sequential (default) — stages run one after another
+applytex run all
+
+# Streaming — stages overlap (discover feeds enrich feeds score, etc.)
+applytex run all --stream
+
+# Custom subset
+applytex run discover enrich score latex
+
+# Preview without executing
+applytex run all --dry-run
+```
+
+`--min-score` defaults to `pipeline.min_score` in `config.yaml` when omitted.
+
+---
+
+## Command reference
+
+| Command | Description |
+|---------|-------------|
+| `applytex init` | First-time setup wizard |
+| `applytex doctor` | Check dependencies, config, LaTeX assets, API keys |
+| `applytex run [stages]` | Pipeline: `discover`, `enrich`, `score`, `latex`, `tailor`, `cover`, `pdf`, or `all` |
+| `applytex status` | DB stats and score distribution |
+| `applytex add URL` | Single job: enrich → score → latex |
+| `applytex review --pending` | List jobs awaiting approval |
+| `applytex review --approve --url URL` | Approve tailored resume for apply |
+| `applytex review --reject --url URL` | Reject a pending variant |
+| `applytex registry` | CLI table of tailored variants (`--pending`, `--approved`, `--json`) |
+| `applytex dashboard` | Generate and open HTML dashboard |
+| `applytex apply` | Browser auto-apply (Tier 3) |
+
+Common flags: `--min-score N`, `--workers N`, `--stream`, `--dry-run`, `--validation strict|normal|lenient`.
+
+---
+
+## Legacy mode (plain-text ApplyPilot flow)
+
+Disable LaTeX in `~/.applytex/config.yaml`:
+
+```yaml
+latex:
+  enabled: false
+```
+
+Then the default pipeline uses plain-text `tailor` + optional `cover` + `pdf` instead of `latex`, with no review gate (unless you add one manually). Useful if you do not have a LaTeX resume.
+
+```bash
+applytex run all                  # discover → enrich → score → tailor
+applytex run score tailor cover   # LLM-only stages
+```
+
+---
+
+## Troubleshooting
+
+| Problem | What to do |
+|---------|------------|
+| `applytex doctor` shows missing JobSpy | Install JobSpy separately (see Installation §2) |
+| LaTeX compile fails | Run `applytex doctor`; ensure `tectonic` or `pdflatex` on PATH; re-run `init` with full folder including `.cls` |
+| No jobs after discover | Check `searches.yaml` sites, locations, `exclude_titles`; run `applytex status` |
+| Jobs scored but not tailored | Score may be below `min_score`; lower in config or `--min-score` |
+| `apply` says no approved resumes | Run `applytex review --pending` then `--approve` |
+| Pending review but compile error | Fix LaTeX assets; re-run `applytex run latex` for that job |
+| Migrating from ApplyPilot | `mv ~/.applypilot ~/.applytex` or set `APPLYTEX_DIR` |
+
+---
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+pytest tests/ -q
+```
 
 ---
 
 ## License
 
-ApplyPilot is licensed under the [GNU Affero General Public License v3.0](LICENSE).
-
-You are free to use, modify, and distribute this software. If you deploy a modified version as a service, you must release your source code under the same license.
+AGPL-3.0 — see [LICENSE](./LICENSE) and [NOTICE](./NOTICE). Based on ApplyPilot (Pickle-Pixel).
