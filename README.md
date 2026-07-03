@@ -122,9 +122,10 @@ ApplyTex takes you from zero to submitted applications:
 1. **Discover** — scrapes Indeed, LinkedIn, Workday employer portals, and 50+ career sites
 2. **Enrich** — fetches full job descriptions and application URLs
 3. **Score** — LLM evaluates fit (1-10) against your resume
-4. **LaTeX Keyword Match** — extracts JD keywords, patches your `master.tex`, compiles a tailored PDF per job, flags all adjustments
-5. **Review** — you inspect the PDF and adjustment report, then approve or reject
-6. **Apply** — launches Chrome + Claude Code to autonomously fill and submit applications
+4. **Gap Insights** — analyze what skills are commonly missing across borderline jobs to improve your base resume
+5. **LaTeX Keyword Match** — extracts JD keywords, patches your `master.tex`, compiles a tailored PDF per job, flags all adjustments
+6. **Review** — you inspect the PDF and adjustment report, then approve or reject
+7. **Apply** — launches Chrome + Claude Code to autonomously fill and submit applications
 
 ### Directory layout
 
@@ -210,6 +211,17 @@ applytex run score
 ```
 
 Only jobs ≥ `pipeline.min_score` (default **8**) proceed to tailoring.
+
+#### Step 3a — Resume gap insights
+
+```bash
+applytex analyze                  # default: jobs scoring 5-6
+applytex analyze --min-score 4    # custom range
+applytex analyze --llm            # include AI recommendations (1 LLM call)
+applytex analyze --json           # machine-readable output
+```
+
+Shows which skills/technologies are **most frequently missing** from your resume across jobs in a score range. Helps prioritize what to add to your base resume (e.g., "Python missing in 46% of borderline jobs, AWS in 30%"). The `--llm` flag makes one LLM call for actionable recommendations on which gaps are worth addressing.
 
 #### Step 4 — LaTeX Keyword Match (tailor + compile)
 

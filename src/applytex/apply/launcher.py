@@ -239,7 +239,7 @@ def gen_prompt(target_url: str, min_score: int | None = None,
     if txt_path and txt_path.exists():
         resume_text = txt_path.read_text(encoding="utf-8")
 
-    prompt = prompt_mod.build_prompt(job=job, tailored_resume=resume_text)
+    prompt = prompt_mod.build_prompt(job=job, tailored_resume=resume_text, worker_id=worker_id)
 
     # Release the lock so the job stays available
     release_lock(job["url"])
@@ -326,6 +326,7 @@ def run_job(job: dict, port: int, worker_id: int = 0,
         job=job,
         tailored_resume=resume_text,
         dry_run=dry_run,
+        worker_id=worker_id,
     )
 
     # Write per-worker MCP config
