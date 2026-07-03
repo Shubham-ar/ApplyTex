@@ -1,4 +1,8 @@
-"""LLM-powered LaTeX patch constrained by KeywordPlan."""
+"""LLM-powered LaTeX patch constrained by KeywordPlan.
+
+Token-efficient: the plan is compressed to a table, skip-terms are
+omitted, and the LLM must verify every adjacent term was actually added.
+"""
 
 from __future__ import annotations
 
@@ -8,31 +12,68 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-_PATCH_PROMPT = """You are a LaTeX resume editor for ATS keyword alignment.
+# ---------------------------------------------------------------------------
+# Compact plan representation — ~60 % smaller than full JSON
+# ---------------------------------------------------------------------------
 
-You receive:
-1. The user's master.tex resume
-2. A KeywordPlan listing allowed changes per JD term
+def _compact_plan(plan: dict) -> str:
+    """Build a token-efficient summary of the keyword plan.
+
+    Strips metadata the LLM doesn't need (job_url, company, adjustments
+    array) and compresses the terms list to a fixed-width table with
+    only the actionable fields.
+    """
+    lines: list[str] = []
+
+    # Sacred blocks header — tells the LLM which sections are off-limits
+    sacred = plan.get("sacred_blocks", [])
+    if sacred:
+        lines.append(f"Sacred sections (NO new skills here): {', '.join(sacred)}")
+
+    # Term table — only include terms that need ACTION (skip gaps)
+    header = f"{'Action':20s} {'JD Term':22s} {'Zone':16s} {'Anchor / Note'}"
+    lines.append(header)
+    lines.append("-" * 80)
+
+    for t in plan.get("terms", []):
+        action = t.get("action", "skip")
+        if action == "skip":
+            continue  # omit gaps/blocked — LLM must leave them alone
+        jd = t["jd"]
+        zone = t.get("zone", "")
+        anchor = t.get("resume_anchor", "")
+        note = t.get("note", "")
+        extra = anchor or note or ""
+        lines.append(f"  {action:18s} {jd:22s} {zone:16s} {extra}")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Patch prompt — requires verified output
+# ---------------------------------------------------------------------------
+
+_PATCH_SYSTEM = """You are a LaTeX resume editor adding ATS keywords from a KeywordPlan.
 
 RULES (violations cause rejection):
 - SACRED BLOCKS (recent role): rephrase wording only — NO new tools/languages, NO swaps
 - FLEX ZONE (older roles/projects):
-  - append_adjacent: ADD the JD term alongside the existing anchor (e.g. "Java" -> "Java and Kotlin")
-    Keep the anchor keyword — do NOT remove or replace it
+  - append_adjacent: ADD the JD term alongside the existing anchor
+    (e.g. "Java" -> "Java and Kotlin"). Keep the anchor keyword — do NOT remove it.
   - swap_label (if plan says swap): replace label only in flex zone
 - NEVER add employers, dates, degrees, certifications, or new metrics
-- NEVER add skills marked action=skip (gap/blocked terms)
+- NEVER add skills with action=skip (not in the term table)
 - Do NOT change document structure, packages, or layout commands
-- Every material keyword change must appear in adjustments[] with flagged=true
 - ESCAPE LaTeX special characters in text: # -> \\#, % -> \\%, & -> \\&, _ -> \\_
 
-Return ONLY valid JSON (no markdown fences):
+Return ONLY valid JSON (no markdown fences, no commentary):
 {
   "tex": "<full updated latex document>",
   "adjustments": [
-    {"jd_term": "Kotlin", "change": "Tech Cruzers: added Kotlin alongside Java", "zone": "flex",
-     "note": "Adjacent JVM language; older role — discuss transferability in interview", "flagged": true}
-  ]
+    {"jd_term": "Kotlin", "change": "Tech Cruzers: added Kotlin alongside Java", "zone": "flex", "flagged": true}
+  ],
+  "verified_adjacent_added": ["Kotlin", "Vue"],
+  "verified_adjacent_skipped": []
 }
 """
 
@@ -58,8 +99,10 @@ def apply_patch(
         school = school_raw
     metrics = ", ".join(resume_facts.get("real_metrics", []))
 
+    compact = _compact_plan(plan)
+
     user_content = (
-        f"KEYWORD PLAN:\n{json.dumps(plan, indent=2)}\n\n"
+        f"KEYWORD PLAN (compact):\n{compact}\n\n"
         f"PRESERVED COMPANIES: {companies}\n"
         f"PRESERVED SCHOOL: {school}\n"
         f"REAL METRICS (do not change): {metrics}\n\n"
@@ -69,10 +112,10 @@ def apply_patch(
     client = get_client()
     raw = client.chat(
         [
-            {"role": "system", "content": _PATCH_PROMPT},
+            {"role": "system", "content": _PATCH_SYSTEM},
             {"role": "user", "content": user_content},
         ],
-        max_tokens=8192,
+        max_tokens=4096,   #<--- reduced from 8192 — typical output is ~5K chars of tex
         temperature=0.2,
     )
 
@@ -80,7 +123,17 @@ def apply_patch(
     tex = data.get("tex", "").strip()
     if not tex:
         raise ValueError("LLM patch returned empty tex")
+
     adjustments = data.get("adjustments") or []
+
+    # --- Verification: warn if adjacent terms were skipped ---
+    skipped = data.get("verified_adjacent_skipped") or []
+    if skipped:
+        log.warning(
+            "LLM skipped %d adjacent terms (not added): %s",
+            len(skipped), ", ".join(skipped),
+        )
+
     return tex, adjustments
 
 

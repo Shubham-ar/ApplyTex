@@ -91,27 +91,40 @@ def tailor_job(master_tex: str, resume_text: str, job: dict, profile: dict) -> d
     adjustments: list = []
     validation: dict = {"passed": False, "errors": [], "warnings": []}
 
-    for attempt in range(MAX_ATTEMPTS):
-        try:
-            patched_tex, adjustments = apply_patch(master_tex, plan, profile)
-            validation = validate_patch(
-                master_tex, patched_tex, plan, profile,
-                sacred_texts=zones.get("sacred_text", []),
-            )
-            if validation["passed"]:
-                break
-            errors = validation["errors"]
-            log.warning("Patch validation failed (attempt %d): %s", attempt + 1, errors)
-        except Exception as exc:
-            errors = [str(exc)]
-            log.warning("Patch failed (attempt %d): %s", attempt + 1, exc)
+    # Early exit: skip LLM call if plan has nothing to add (no adjacent terms)
+    has_adjacent = any(
+        t.get("action") in ("append_adjacent", "swap_label")
+        for t in plan.get("terms", [])
+    )
+    if has_adjacent:
+        for attempt in range(MAX_ATTEMPTS):
+            try:
+                patched_tex, adjustments = apply_patch(master_tex, plan, profile)
+                validation = validate_patch(
+                    master_tex, patched_tex, plan, profile,
+                    sacred_texts=zones.get("sacred_text", []),
+                )
+                if validation["passed"]:
+                    break
+                errors = validation["errors"]
+                log.warning("Patch validation failed (attempt %d): %s", attempt + 1, errors)
+            except Exception as exc:
+                errors = [str(exc)]
+                log.warning("Patch failed (attempt %d): %s", attempt + 1, exc)
+        else:
+            return {
+                "status": "failed_validation",
+                "prefix": prefix,
+                "errors": errors,
+                "plan_path": str(plan_path),
+            }
     else:
-        return {
-            "status": "failed_validation",
-            "prefix": prefix,
-            "errors": errors,
-            "plan_path": str(plan_path),
-        }
+        log.info(
+            "[%s] No adjacent terms to add — skipping LLM patch (%d already exact, %d gaps)",
+            prefix,
+            sum(1 for t in plan.get("terms", []) if t.get("status") == "exact"),
+            sum(1 for t in plan.get("terms", []) if t.get("status") in ("gap", "blocked")),
+        )
 
     tex_path = TAILORED_DIR / f"{prefix}.tex"
     tex_path.write_text(patched_tex, encoding="utf-8")

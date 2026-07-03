@@ -51,7 +51,7 @@ def term_in_text(term: str, text: str) -> bool:
 
 def extract_from_jd(job_description: str, client: Any | None = None) -> list[str]:
     """Extract 15–25 keyword phrases from a job description."""
-    jd = (job_description or "")[:8000]
+    jd = (job_description or "")[:4000]  # Most tech keywords in first half; rest is boilerplate
     if client is not None:
         try:
             raw = client.chat(
