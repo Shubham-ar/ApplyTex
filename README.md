@@ -1,136 +1,152 @@
 # ApplyTex
 
-**LaTeX-native job application pipeline** — fork of [ApplyPilot](https://github.com/Pickle-Pixel/ApplyPilot) v0.3.0 by Pickle-Pixel (AGPL-3.0).
+**LaTeX-native job application pipeline** — fork of [ApplyPilot](https://github.com/Pickle-Pixel/ApplyPilot) v0.3.0 (AGPL-3.0).
 
-ApplyTex keeps ApplyPilot's job discovery, LLM scoring, and optional browser auto-apply. The LaTeX path adds:
-
-- **`master.tex` as your canonical resume** — copied from Overleaf or a local folder at `init`
-- **Keyword Match** — zone-aware JD keyword alignment on your `.tex`, with flagged adjustments
-- **Approve-before-apply** — review tailored PDFs before they enter the apply queue
-- **Per-job PDF compile** from your template (`.cls` / `.sty`)
-- **Registry** — tailored variant ↔ job URL in the CLI and HTML dashboard
-
-User data lives in **`~/.applytex/`** (override with `APPLYTEX_DIR`).
-
-> Developer reference: [`IMPLEMENTATION_PLAN.md`](./IMPLEMENTATION_PLAN.md)
+Discover jobs, score them against your resume, auto-tailor your LaTeX resume per job, then auto-apply through browsers.
 
 ---
 
-## What you need (tiers)
+## Quick Start
 
-| Tier | Unlocks | Requirements |
-|------|---------|--------------|
-| **1 — Discovery** | `init`, `run discover`, `run enrich`, `status`, `dashboard` | Python 3.11+, JobSpy, Playwright |
-| **2 — AI scoring & LaTeX** | `run score`, `run latex`, `review`, `add`, `registry` | LLM API key in `~/.applytex/.env` |
+### What you need
+
+| Tier | What you can do | Requirements |
+|------|----------------|-------------|
+| **1 — Discovery** | `discover`, `enrich`, `status`, `dashboard` | Python 3.11+, [JobSpy](#2-install-jobspy), [Playwright](#3-install-playwright) |
+| **2 — AI scoring & tailoring** | `score`, `latex`, `review`, `add`, `registry` | LLM API key (DeepSeek/Gemini/OpenAI) |
 | **3 — Auto-apply** | `apply` | Tier 2 + [Claude Code CLI](https://claude.ai/code) + Chrome + Node.js |
 
-Run `applytex doctor` anytime to see what is missing.
+Run `applytex doctor` anytime to see what's missing.
 
----
-
-## Installation
-
-### 1. Clone and install ApplyTex
+### 1. Clone and install
 
 ```bash
 git clone <your-applytex-repo-url> ApplyTex
 cd ApplyTex
 
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 
 pip install -e .
-applytex --version                   # should print 0.4.5+
+applytex --version        # should print 0.4.5+
 ```
 
-### 2. Install JobSpy (job board scraping)
-
-JobSpy is installed separately because of dependency pin conflicts:
+### 2. Install JobSpy (job discovery)
 
 ```bash
 pip install --no-deps python-jobspy
 pip install pydantic tls-client requests markdownify regex
 ```
 
-### 3. Install Playwright (enrichment + single-job add)
+### 3. Install Playwright (enrichment)
 
 ```bash
 playwright install chromium
 ```
 
-### 4. Install a LaTeX engine (Keyword Match PDF compile)
-
-Pick one:
+### 4. Install LaTeX engine (PDF compile)
 
 ```bash
-# Recommended — lightweight, no full TeX Live install
-brew install tectonic              # macOS
+# Recommended — lightweight
+brew install tectonic
 # or: cargo install tectonic
-
-# Alternative
-# Install TeX Live, then ensure pdflatex is on PATH
 ```
 
-Set the engine in `~/.applytex/config.yaml` (`latex.engine: tectonic` or `pdflatex`).
+### 5. Set up your LLM (AI features)
 
-### 5. Verify
+Create `~/.applytex/.env`:
 
 ```bash
-applytex doctor
+# DeepSeek (cheap, fast — recommended for scoring + tailoring)
+ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
+ANTHROPIC_AUTH_TOKEN=your_deepseek_api_key
+ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-flash
+LLM_MODEL=deepseek-v4-flash
+
+# Or Gemini (free tier)
+# GEMINI_API_KEY=your_key
+# LLM_MODEL=gemini-2.0-flash
+
+# Or OpenAI
+# OPENAI_API_KEY=your_key
 ```
 
-Fix anything marked **MISSING** before continuing.
+> **Tip:** Use DeepSeek for scoring/tailoring (cheap). If you also enable auto-apply (Tier 3), Claude Code uses its own model — you can keep DeepSeek for everything else.
 
----
-
-## First-time setup (`applytex init`)
-
-The wizard creates everything under `~/.applytex/`:
-
-```
-~/.applytex/
-  latex/master.tex          ← your resume source (copied in)
-  latex/resume.cls          ← class/style files (if present)
-  resume.txt                ← plain text derived for scoring
-  profile.json              ← personal info for scoring + auto-fill
-  searches.yaml             ← job boards, locations, queries
-  config.yaml               ← pipeline + LaTeX settings
-  skill_adjacency.yaml      ← keyword cluster rules
-  .env                      ← LLM API keys
-  applytex.db               ← job database
-  tailored_resumes/         ← per-job .tex, .pdf, .txt outputs
-```
-
-### Run the wizard
+### 6. Run the setup wizard
 
 ```bash
 applytex init
 ```
 
-You will be prompted for:
+This walks you through:
+- **LaTeX resume** — path to your `.tex` file, Overleaf export folder, or `.zip`
+- **Profile** — name, email, work auth, skills, preserved resume facts
+- **Search config** — locations, job titles, Indeed country
+- **AI provider** — API key for scoring + tailoring
 
-1. **LaTeX resume** — path to a single `.tex` file, an Overleaf export folder, or a `.zip`. ApplyTex **copies** files into `~/.applytex/latex/`; your original path is not used at runtime.
-2. **Profile** — name, email, work authorization, compensation, skills boundary, preserved resume facts.
-3. **Search config** — target location, search radius, job titles/queries, Indeed country.
-4. **LLM provider** — Gemini (free tier friendly), OpenAI, Anthropic-compatible (e.g. DeepSeek), or local Ollama.
-
-After init, run `applytex doctor` again to confirm LaTeX assets and API keys.
-
-### Migrating from ApplyPilot
+### 7. Run the pipeline
 
 ```bash
-mv ~/.applypilot ~/.applytex
-# or keep the old dir:
-export APPLYTEX_DIR=~/.applypilot
+# Full pipeline: discover → enrich → score → latex
+applytex run all
+
+# Or step by step:
+applytex run discover         # find jobs
+applytex run score            # score them against your resume
+applytex run latex            # tailor + compile PDFs per job
 ```
 
-If you have `applypilot.db` but not `applytex.db`, ApplyTex uses the legacy DB automatically; `doctor` shows a rename hint.
+### 8. Review and apply
+
+```bash
+applytex review --pending     # see what needs approval
+applytex dashboard            # open HTML dashboard in browser
+
+# Approve a tailored resume:
+applytex review --approve --url "https://boards.greenhouse.io/..."
+
+# Auto-apply (Tier 3 — needs Claude Code + Chrome):
+applytex apply --dry-run --limit 3   # dry run first
+applytex apply --limit 5              # real apply
+```
 
 ---
 
-## Configuration files
+## Detailed Documentation
 
-### `~/.applytex/config.yaml`
+### What ApplyTex does
+
+ApplyTex takes you from zero to submitted applications:
+
+1. **Discover** — scrapes Indeed, LinkedIn, Workday employer portals, and 50+ career sites
+2. **Enrich** — fetches full job descriptions and application URLs
+3. **Score** — LLM evaluates fit (1-10) against your resume
+4. **LaTeX Keyword Match** — extracts JD keywords, patches your `master.tex`, compiles a tailored PDF per job, flags all adjustments
+5. **Review** — you inspect the PDF and adjustment report, then approve or reject
+6. **Apply** — launches Chrome + Claude Code to autonomously fill and submit applications
+
+### Directory layout
+
+All user data lives in `~/.applytex/`:
+
+```
+~/.applytex/
+  latex/master.tex          ← your canonical resume (copied at init)
+  latex/resume.cls          ← document class file
+  resume.txt                ← plain text for scoring
+  profile.json              ← your personal info
+  searches.yaml             ← job boards, locations, queries
+  config.yaml               ← pipeline + LaTeX settings
+  skill_adjacency.yaml      ← keyword cluster rules
+  .env                      ← LLM API keys
+  applytex.db               ← SQLite job database
+  tailored_resumes/         ← per-job .tex, .pdf, .txt outputs
+```
+
+### Configuration files
+
+#### `~/.applytex/config.yaml`
 
 ```yaml
 latex:
@@ -139,286 +155,186 @@ latex:
 
 pipeline:
   default_stages: [discover, enrich, score, latex]
-  min_score: 8                    # used when --min-score is omitted
+  min_score: 8
 
 cover:
   enabled: false
 
 keyword_policy:
-  auto_release: false             # true = skip review gate (power users)
+  auto_release: false       # true = skip review gate
 ```
 
-### `~/.applytex/searches.yaml`
+#### `~/.applytex/searches.yaml`
 
-Controls **where** and **what** to search. Key sections:
+Controls where and what to search:
 
-- `sites` — JobSpy boards (`indeed`, `linkedin`, `glassdoor`, …). Legacy `boards:` alias still works.
-- `defaults.country_indeed` — Indeed/Glassdoor country (`usa`, `canada`, …).
-- `locations[]` — search locations; each entry has `location` and `remote`.
-- `location.accept_patterns` / `reject_patterns` — post-filter discovered jobs.
-- `queries[]` — search strings with optional `tier` (1 = highest priority).
-- `jobspy_max_tier` — max query tier for all discovery scrapers (default `2`).
-- `exclude_titles` — skip jobs whose title contains these strings.
+- `sites` — JobSpy boards: `indeed`, `linkedin`, `glassdoor`, `zip_recruiter`
+- `defaults.country_indeed` — `usa`, `canada`, `uk`, etc.
+- `locations[]` — search locations with optional `remote` flag
+- `location.accept_patterns` / `reject_patterns` — post-filter results
+- `queries[]` — search strings with optional `tier` (1 = highest priority)
+- `exclude_titles` — skip jobs matching these patterns
 
-See [`src/applytex/config/searches.example.yaml`](./src/applytex/config/searches.example.yaml) for a full example.
-
-### `~/.applytex/.env`
-
-LLM keys (pick one provider):
+#### `~/.applytex/.env`
 
 ```bash
-# Gemini
+# Pick one provider:
 GEMINI_API_KEY=your_key
-LLM_MODEL=gemini-2.0-flash
-
-# OpenAI
 # OPENAI_API_KEY=your_key
-
-# Anthropic-compatible (e.g. DeepSeek)
 # ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
 # ANTHROPIC_AUTH_TOKEN=your_key
-# ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-flash
-
-# Local
 # LLM_URL=http://localhost:11434/v1
 # LLM_MODEL=llama3
 ```
 
-Optional for auto-apply: `CAPSOLVER_API_KEY`, `CHROME_PATH`, `APPLYTEX_DIR`.
+### Full pipeline workflow
 
----
-
-## Step-by-step: full pipeline workflow
-
-This is the default **semi-auto** flow: discover → score → tailor → **you approve** → apply.
-
-### Step 1 — Discover jobs
-
-Scrapes Indeed/LinkedIn (JobSpy), Workday employer portals, and configured career sites:
+#### Step 1 — Discover jobs
 
 ```bash
 applytex run discover
-# or run discovery + enrichment together:
-applytex run discover enrich
-
-# parallel discovery/enrichment:
-applytex run discover enrich --workers 4
+applytex run discover enrich --workers 4   # parallel
 ```
 
-Check progress:
-
-```bash
-applytex status
-```
-
-Edit `~/.applytex/searches.yaml` to tune boards, locations, queries, and title filters, then re-run discover.
-
-### Step 2 — Enrich job descriptions (if not done in Step 1)
-
-Fetches full descriptions and application URLs:
+#### Step 2 — Enrich (if not done in Step 1)
 
 ```bash
 applytex run enrich
 applytex run enrich --workers 4
 ```
 
-### Step 3 — Score jobs against your resume
-
-Compares each job description to `~/.applytex/resume.txt` (derived from your LaTeX at init):
+#### Step 3 — Score jobs
 
 ```bash
 applytex run score
 ```
 
-Scores are 1–10. Only jobs at or above `pipeline.min_score` (default **8**) proceed to tailoring. Override per run:
+Only jobs ≥ `pipeline.min_score` (default **8**) proceed to tailoring.
 
-```bash
-applytex run score
-applytex run latex --min-score 7    # when running latex alone
-```
-
-### Step 4 — LaTeX Keyword Match (tailor + compile)
+#### Step 4 — LaTeX Keyword Match (tailor + compile)
 
 For each high-scoring job, ApplyTex:
-
-1. Extracts JD keywords
-2. Builds a keyword plan (exact / adjacent / gap)
-3. Patches `master.tex` (sacred zone = current role; flex zone = older roles)
-4. Compiles `{prefix}.pdf` and writes `{prefix}.txt` for the apply agent
-5. Sets `review_status = pending` (unless `keyword_policy.auto_release: true`)
+1. Extracts JD keywords via LLM
+2. Classifies them: `exact` / `adjacent` / `gap` / `blocked`
+3. Detects **sacred zone** (current role — rephrase only) vs **flex zone** (older roles — can add adjacent skills)
+4. Builds a keyword plan, patches `master.tex` via LLM
+5. Compiles PDF, exports plain text, generates keyword report
+6. Sets `review_status = pending`
 
 ```bash
 applytex run latex
-# or run the default pipeline in one command:
-applytex run all
-# equivalent to config.yaml default_stages: discover enrich score latex
+applytex run latex --workers 10           # parallel
 ```
 
 Outputs per job in `~/.applytex/tailored_resumes/`:
+- `{prefix}.tex` / `.pdf` / `.txt`
+- `{prefix}_KEYWORD_PLAN.json`
+- `{prefix}_KEYWORD_REPORT.json` — human-readable adjustments
 
-```
-{prefix}.tex
-{prefix}.pdf
-{prefix}.txt                    ← used by auto-apply for form fields
-{prefix}_KEYWORD_PLAN.json
-{prefix}_KEYWORD_REPORT.json    ← human-readable adjustment flags
-```
-
-### Step 5 — Review flagged adjustments
-
-List jobs awaiting your approval:
+#### Step 5 — Review and approve
 
 ```bash
 applytex review --pending
-applytex registry --pending
-applytex dashboard              # opens HTML dashboard with registry section
-```
-
-Inspect the PDF and `_KEYWORD_REPORT.json` adjustments (e.g. adjacent swaps on older projects). Then:
-
-```bash
-applytex review --approve --url "https://boards.greenhouse.io/company/jobs/123"
-# or reject:
+applytex review --approve --url "https://..."
 applytex review --reject --url "https://..."
 ```
 
-Only **approved** jobs get `tailored_resume_path` set and appear in the apply queue.
-
-### Step 6 — Auto-apply (optional, Tier 3)
-
-Requires Claude Code CLI, Chrome, and Node.js (`npx`).
-
-Dry-run first (fills forms, does not click Submit):
+#### Step 6 — Auto-apply (Tier 3)
 
 ```bash
-applytex apply --dry-run --url "https://boards.greenhouse.io/company/jobs/123"
-```
-
-Apply to one approved job:
-
-```bash
-applytex apply --url "https://..."
-```
-
-Apply to the highest-scoring approved jobs in queue:
-
-```bash
-applytex apply --limit 5
-applytex apply --continuous      # poll forever for new approved jobs
+applytex apply --dry-run --url "https://..."       # fills form, no Submit
+applytex apply --url "https://..."                  # single job
+applytex apply --limit 5                            # top N approved jobs
+applytex apply --continuous                         # poll forever
 ```
 
 Utility flags:
-
 ```bash
 applytex apply --mark-applied "URL"
 applytex apply --mark-failed "URL" --fail-reason "captcha"
 applytex apply --reset-failed
-applytex apply --gen --url "URL"   # dump prompt for manual debugging
 ```
 
----
-
-## Step-by-step: single job URL
-
-When you find one posting outside the discovery crawl:
+### Single job URL
 
 ```bash
 applytex add "https://boards.greenhouse.io/company/jobs/456"
 ```
 
-This runs: **insert → enrich → score → LaTeX Keyword Match** (if score ≥ threshold).
+Runs: insert → enrich → score → LaTeX Keyword Match (if score ≥ threshold). Then review and apply.
 
-Then review and apply as above:
-
-```bash
-applytex review --pending
-applytex review --approve --url "https://..."
-applytex apply --dry-run --url "https://..."
-```
-
----
-
-## Step-by-step: run everything at once
+### Running everything at once
 
 ```bash
-# Sequential (default) — stages run one after another
+# Sequential (default)
 applytex run all
 
-# Streaming — stages overlap (discover feeds enrich feeds score, etc.)
+# Streaming — stages overlap
 applytex run all --stream
 
-# Custom subset
+# Custom stages
 applytex run discover enrich score latex
 
-# Preview without executing
-applytex run all --dry-run
+# Custom score threshold
+applytex run latex --min-score 7
 ```
 
-`--min-score` defaults to `pipeline.min_score` in `config.yaml` when omitted.
-
----
-
-## Command reference
+### Command reference
 
 | Command | Description |
 |---------|-------------|
 | `applytex init` | First-time setup wizard |
-| `applytex doctor` | Check dependencies, config, LaTeX assets, API keys |
-| `applytex run [stages]` | Pipeline: `discover`, `enrich`, `score`, `latex`, `tailor`, `cover`, `pdf`, or `all` |
+| `applytex doctor` | Check dependencies, config, API keys |
+| `applytex run [stages]` | Pipeline: `discover`, `enrich`, `score`, `tailor`, `latex`, `cover`, `pdf`, or `all` |
 | `applytex status` | DB stats and score distribution |
 | `applytex add URL` | Single job: enrich → score → latex |
 | `applytex review --pending` | List jobs awaiting approval |
-| `applytex review --approve --url URL` | Approve tailored resume for apply |
-| `applytex review --reject --url URL` | Reject a pending variant |
+| `applytex review --approve --url URL` | Approve for apply |
+| `applytex review --reject --url URL` | Reject a variant |
 | `applytex registry` | CLI table of tailored variants (`--pending`, `--approved`, `--json`) |
 | `applytex dashboard` | Generate and open HTML dashboard |
 | `applytex apply` | Browser auto-apply (Tier 3) |
 
 Common flags: `--min-score N`, `--workers N`, `--stream`, `--dry-run`, `--validation strict|normal|lenient`.
 
----
+### Validation modes
 
-## Legacy mode (plain-text ApplyPilot flow)
+| Mode | Banned words | LLM Judge | Use case |
+|------|-------------|-----------|----------|
+| `strict` | Errors (retry) | Must pass | Production |
+| `normal` | Warnings only | Can fail on last retry | Default |
+| `lenient` | Ignored | Skipped | Fastest, fewest API calls |
 
-Disable LaTeX in `~/.applytex/config.yaml`:
+### Legacy mode (plain text, no LaTeX)
 
 ```yaml
+# ~/.applytex/config.yaml
 latex:
   enabled: false
 ```
 
-Then the default pipeline uses plain-text `tailor` + optional `cover` + `pdf` instead of `latex`, with no review gate (unless you add one manually). Useful if you do not have a LaTeX resume.
+Then the pipeline uses plain-text `tailor` + optional `cover` + `pdf` instead of `latex`, with no review gate.
 
-```bash
-applytex run all                  # discover → enrich → score → tailor
-applytex run score tailor cover   # LLM-only stages
-```
-
----
-
-## Troubleshooting
+### Troubleshooting
 
 | Problem | What to do |
 |---------|------------|
-| `applytex doctor` shows missing JobSpy | Install JobSpy separately (see Installation §2) |
-| LaTeX compile fails | Run `applytex doctor`; ensure `tectonic` or `pdflatex` on PATH; re-run `init` with full folder including `.cls` |
-| No jobs after discover | Check `searches.yaml` sites, locations, `exclude_titles`; run `applytex status` |
-| Jobs scored but not tailored | Score may be below `min_score`; lower in config or `--min-score` |
-| `apply` says no approved resumes | Run `applytex review --pending` then `--approve` |
-| Pending review but compile error | Fix LaTeX assets; re-run `applytex run latex` for that job |
+| `doctor` shows missing JobSpy | Install separately (see Quick Start §2) |
+| LaTeX compile fails | Run `doctor`; ensure `tectonic` on PATH; re-run `init` with folder including `.cls` |
+| No jobs after discover | Check `searches.yaml` sites, locations, `exclude_titles`; run `status` |
+| Jobs scored but not tailored | Score below `min_score`; lower threshold via `--min-score` |
+| `apply` says no approved resumes | Run `review --pending` then `--approve` |
+| Pending review but compile error | Fix LaTeX assets; re-run `applytex run latex` |
+| `apply` needs Claude Code | Install from https://claude.ai/code |
 | Migrating from ApplyPilot | `mv ~/.applypilot ~/.applytex` or set `APPLYTEX_DIR` |
 
----
-
-## Development
+### Development
 
 ```bash
 pip install -e ".[dev]"
 pytest tests/ -q
 ```
 
----
+### License
 
-## License
-
-AGPL-3.0 — see [LICENSE](./LICENSE) and [NOTICE](./NOTICE). Based on ApplyPilot (Pickle-Pixel).
+AGPL-3.0 — see [LICENSE](./LICENSE) and [NOTICE](./NOTICE). Based on ApplyPilot v0.3.0 by Pickle-Pixel.
