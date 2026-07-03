@@ -737,5 +737,29 @@ def doctor() -> None:
     console.print()
 
 
+@app.command()
+def analyze(
+    min_score: int = typer.Option(5, "--min-score", help="Lower bound of score range to analyze."),
+    max_score: int = typer.Option(6, "--max-score", help="Upper bound of score range to analyze."),
+    json_out: bool = typer.Option(False, "--json", help="Output as machine-readable JSON."),
+    llm: bool = typer.Option(False, "--llm", help="Generate AI recommendations from the gap data (1 LLM call)."),
+    limit: int = typer.Option(0, "--limit", "-n", help="Max jobs to analyze (0 = all)."),
+) -> None:
+    """Aggregate resume gap insights: find what skills your resume is
+    missing across jobs in a score range (default 5-6). Helps identify
+    high-impact additions to your base resume."""
+    _bootstrap()
+
+    from applytex.analysis.gaps import analyze_gaps, format_gap_report
+
+    result = analyze_gaps(
+        min_score=min_score,
+        max_score=max_score,
+        limit=limit,
+        use_llm=llm,
+    )
+    format_gap_report(result, json_out=json_out)
+
+
 if __name__ == "__main__":
     app()

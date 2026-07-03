@@ -292,6 +292,7 @@ applytex run latex --min-score 7
 | `applytex review --approve --url URL` | Approve for apply |
 | `applytex review --reject --url URL` | Reject a variant |
 | `applytex registry` | CLI table of tailored variants (`--pending`, `--approved`, `--json`) |
+| `applytex analyze` | Aggregate gap insights — find what skills your resume is missing across a score range |
 | `applytex dashboard` | Generate and open HTML dashboard |
 | `applytex apply` | Browser auto-apply (Tier 3) |
 
